@@ -14,7 +14,8 @@ struct client_key {
 	bool is_dir;
 	bool operator<(const client_key& value) const
 	{
-		return std::tie(path, is_dir, value.tabid) < std::tie(value.path, value.is_dir, value.tabid);
+		// AviUtl2Browser_H: 原作は左辺の tabid が value.tabid になっていて、tabid が比較されず別タブにならなかった
+		return std::tie(path, is_dir, tabid) < std::tie(value.path, value.is_dir, value.tabid);
 	}
 };
 

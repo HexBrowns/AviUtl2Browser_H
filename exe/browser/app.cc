@@ -41,6 +41,9 @@ bool App::RenderAndCapture(
         window_info.SetAsWindowless(nullptr);
         CefBrowserSettings browser_settings;
         browser_settings.background_color = 0;
+        // AviUtl2Browser_H: 画面外描画の上限（既定 30）を上げる。1 回の描画は合図の色が乗った絵を待つので、
+        // 上限が 1 回あたりの時間をほぼ決める（FHD で 30 のとき約 33ms）
+        browser_settings.windowless_frame_rate = 60;
         CefString utf8(L"UTF-8");
         cef_string_utf16_set(utf8.c_str(), utf8.length(), &browser_settings.default_encoding, false);
         browser_settings.javascript_access_clipboard = STATE_DISABLED;
@@ -75,17 +78,12 @@ void App::OnContextInitialized() {
     cv_.notify_all();
 }
 
-void App::OnContextCreated(CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> frame, CefRefPtr<CefV8Context> context) {
-    CefRefPtr<CefV8Value> ret;
-    CefRefPtr<CefV8Exception> err;
-    context->Eval(LR"JS(window.AviUtlBrowser = AviUtlBrowserExtension)JS", frame->GetURL(), 0, ret, err);
-}
-
-void App::OnWebKitInitialized() {
-    CefString extensionCode(LR"JS(
-const AviUtlBrowserExtension = (()=>{
+// AviUtl2Browser_H: 原作は OnWebKitInitialized で CefRegisterExtension（V8 拡張と `native function`）を使い、
+// ここで window.AviUtlBrowser に代入していた。CEF 154 で CefRegisterExtension が無くなったので、
+// 同じ JS を「rendered を受け取る関数」として評価し、CefV8Handler の rendered を渡して作る。
+// JS から見える AviUtlBrowser（render / registerRenderer）は原作と同じ。
+static const wchar_t* const kAviUtlBrowserFactory = LR"JS((rendered) => {
   "use strict";
-  native function rendered();
   let renderer = null;
   let ackElem = null;
   let curAck = 0;
@@ -130,8 +128,25 @@ const AviUtlBrowserExtension = (()=>{
       renderer = fn;
     },
   };
-})();
-)JS");
-	CefRefPtr<CefV8Handler> h(new CallbackHandler());
-	CefRegisterExtension(L"v8/AviUtlBrowserExtension", extensionCode, h);
+})JS";
+
+void App::OnContextCreated(CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> frame, CefRefPtr<CefV8Context> context) {
+    CefRefPtr<CefV8Value> factory;
+    CefRefPtr<CefV8Exception> err;
+    if (!context->Eval(kAviUtlBrowserFactory, frame->GetURL(), 0, factory, err) || !factory || !factory->IsFunction()) {
+        return;
+    }
+    CefV8ValueList args;
+    args.push_back(CefV8Value::CreateFunction("rendered", new CallbackHandler()));
+    CefRefPtr<CefV8Value> api = factory->ExecuteFunctionWithContext(context, nullptr, args);
+    if (!api || !api->IsObject()) {
+        return;
+    }
+    if (context->Enter()) {
+        context->GetGlobal()->SetValue("AviUtlBrowser", api, V8_PROPERTY_ATTRIBUTE_NONE);
+        context->Exit();
+    }
+}
+
+void App::OnWebKitInitialized() {
 }

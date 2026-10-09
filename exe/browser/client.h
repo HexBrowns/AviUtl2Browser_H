@@ -20,6 +20,7 @@ public:
 	virtual void OnBeforeClose(CefRefPtr<CefBrowser> browser) override { before_close(browser); }
 	virtual bool OnBeforePopup(CefRefPtr<CefBrowser> browser,
 		CefRefPtr<CefFrame> frame,
+		int popup_id,
 		const CefString& target_url,
 		const CefString& target_frame_name,
 		WindowOpenDisposition target_disposition,
@@ -69,6 +70,7 @@ public:
 	// CefLifeSpanHandler methods:
 	virtual bool OnBeforePopup(CefRefPtr<CefBrowser> browser,
 		CefRefPtr<CefFrame> frame,
+		int popup_id,
 		const CefString& target_url,
 		const CefString& target_frame_name,
 		CefLifeSpanHandler::WindowOpenDisposition target_disposition,

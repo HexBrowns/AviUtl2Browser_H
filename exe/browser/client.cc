@@ -59,6 +59,7 @@ bool Client::OnProcessMessageReceived(CefRefPtr<CefBrowser> browser,
 
 bool Client::OnBeforePopup(CefRefPtr<CefBrowser> browser,
 	CefRefPtr<CefFrame> frame,
+	int popup_id,
 	const CefString& target_url,
 	const CefString& target_frame_name,
 	CefLifeSpanHandler::WindowOpenDisposition target_disposition,
@@ -328,9 +329,20 @@ void Client::SetUseDevTools(const bool use_devtools) {
 
 bool Client::RenderAndCapture(const std::wstring& inbuf, std::wstring& outbuf, void* image, const int width, const int height) {
 	Resize(width, height);
-	Render(inbuf, outbuf, 30000);
+	// AviUtl2Browser_H: 原作は Render の結果を捨てて常に true を返していた（JS が reject しても Lua には成功と返った）
+	const bool ok = Render(inbuf, outbuf, 30000);
+	bool timed_out;
+	{
+		std::lock_guard<std::mutex> lk(mtx_);
+		timed_out = !rendered_;
+	}
+	if (timed_out) {
+		// AviUtl2Browser_H: JS が完了を返さないと合図の色が変わらず、描画が来ないので Capture が待ち続ける。
+		// 描き直させて、今の絵を取る
+		CefPostTask(TID_UI, base::BindOnce(&CefBrowserHost::Invalidate, browser_list_.front()->GetHost(), PET_VIEW));
+	}
 	Capture(image, width, height);
-	return true;
+	return ok;
 }
 
 std::wstring buildCallbackCallCode(const std::wstring& param, const std::wstring& userfile_hash, const int sequence) {

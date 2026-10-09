@@ -44,7 +44,7 @@ static bool to_fullpath(LPCWSTR path, std::wstring& o) {
 }
 
 static CefRefPtr<Assets> createErrorAssets() {
-    return new StaticErrorAssets(500, L"Failed to load the content.<br>ƒRƒ“ƒeƒ“ƒc‚Ì“Ç‚İ‚İ‚É¸”s‚µ‚Ü‚µ‚½B");
+    return new StaticErrorAssets(500, L"Failed to load the content.<br>ã‚³ãƒ³ãƒ†ãƒ³ãƒ„ã®èª­ã¿è¾¼ã¿ã«å¤±æ•—ã—ã¾ã—ãŸã€‚");
 }
 
 CefRefPtr<Assets> App::InitAssets(const std::wstring& path, const bool use_dir) {

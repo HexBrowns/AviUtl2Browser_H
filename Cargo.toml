@@ -1,0 +1,39 @@
+[package]
+name = "aviutl2-browser-h"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+authors = ["HexBrowns"]
+description = "AviUtl2Browser_H - aviutl_browser (oov) ported to AviUtl2"
+publish = false
+
+[lib]
+name = "aviutl2_browser_h"
+# cdylib が本体（.mod2）。rlib は examples/ の単体確認（AviUtl2 なしで exe を動かす）用
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+anyhow = "1"
+aviutl2 = "0.48"
+
+[dependencies.windows-sys]
+version = "0.61"
+features = [
+    "Win32_Foundation",
+    "Win32_Globalization",
+    "Win32_Security",
+    "Win32_Storage_FileSystem",
+    "Win32_System_IO",
+    "Win32_System_JobObjects",
+    "Win32_System_LibraryLoader",
+    "Win32_System_Memory",
+    "Win32_System_Pipes",
+    "Win32_System_Threading",
+]
+
+[dev-dependencies]
+png = "0.17"
+
+[profile.release]
+lto = true
+codegen-units = 1

@@ -1,0 +1,139 @@
+#:schema ./.aviutl2-cli/aviutl2.schema.json
+#
+# ビルドと配布の設定（aviutl2-cli: https://github.com/sevenc-nanashi/aviutl2-cli）。
+#   python AI/tools/au2_build.py AviUtl2Browser_H   テスト → au2 release → 検査 → 本番へ展開
+# project.version は Cargo.toml の version と、exe/CMakeLists.txt の AVIUTL2BROWSER_VERSION と揃える。
+#
+# au2 の同梱物は 1 ファイルずつしか書けない（フォルダは写せない。aviutl2-cli 0.11.2 の copy_to_destination）。
+# CEF の実行時ファイルは下に並べる。ロケールは en-US と ja だけ（足りない言語は en-US で動く。仕様書「第 1 段階」）。
+# CEF の版を上げてファイルが増減したら、ここを直す。
+
+[project]
+id = "HexBrowns.AviUtl2Browser_H"
+name = "AviUtl2Browser_H"
+version = "0.1.0"
+
+# exe は CMake で 1 回だけビルドする（下の同梱物がこのグループを参照する）
+[build_group]
+exe = [
+    # au2 は cmd /C で実行するので、空白を含む生成器名（-G "Visual Studio 17 2022"）を渡せない。
+    # 省くと入っている最新の Visual Studio が使われる
+    "cmake -S exe -B exe/build -A x64",
+    "cmake --build exe/build --config Release --target aviutl_browser",
+]
+
+[artifacts."AviUtl2Browser_H.mod2"]
+build = "cargo build --release"
+source = "target/release/aviutl2_browser_h.dll"
+destination = "Script/browser/AviUtl2Browser_H.mod2"
+
+# require("browser") は呼んだスクリプトのフォルダだけを探すので、原作と同じ Script/browser/ に置く
+[artifacts."browser.lua"]
+source = "scripts/browser.lua"
+destination = "Script/browser/browser.lua"
+
+[artifacts."ブラウザ表示.obj2"]
+source = "scripts/ブラウザ表示.obj2"
+destination = "Script/browser/ブラウザ表示.obj2"
+
+[artifacts."contents/README.txt"]
+source = "scripts/contents_README.txt"
+destination = "Script/browser/contents/README.txt"
+
+[artifacts."exe/CREDITS.html"]
+source = "exe/third_party/cef_binary_154.0.34+g14c5a08+chromium-154.0.8037.98_windows64_minimal/CREDITS.html"
+destination = "Script/browser/exe/CREDITS.html"
+
+[artifacts."exe/aviutl_browser.exe"]
+build = { group = "exe" }
+source = "exe/build/browser/Release/aviutl_browser.exe"
+destination = "Script/browser/exe/aviutl_browser.exe"
+
+[artifacts."exe/libcef.dll"]
+build = { group = "exe" }
+source = "exe/build/browser/Release/libcef.dll"
+destination = "Script/browser/exe/libcef.dll"
+
+[artifacts."exe/chrome_elf.dll"]
+build = { group = "exe" }
+source = "exe/build/browser/Release/chrome_elf.dll"
+destination = "Script/browser/exe/chrome_elf.dll"
+
+[artifacts."exe/d3dcompiler_47.dll"]
+build = { group = "exe" }
+source = "exe/build/browser/Release/d3dcompiler_47.dll"
+destination = "Script/browser/exe/d3dcompiler_47.dll"
+
+[artifacts."exe/dxcompiler.dll"]
+build = { group = "exe" }
+source = "exe/build/browser/Release/dxcompiler.dll"
+destination = "Script/browser/exe/dxcompiler.dll"
+
+[artifacts."exe/dxil.dll"]
+build = { group = "exe" }
+source = "exe/build/browser/Release/dxil.dll"
+destination = "Script/browser/exe/dxil.dll"
+
+[artifacts."exe/vk_swiftshader.dll"]
+build = { group = "exe" }
+source = "exe/build/browser/Release/vk_swiftshader.dll"
+destination = "Script/browser/exe/vk_swiftshader.dll"
+
+[artifacts."exe/vk_swiftshader_icd.json"]
+build = { group = "exe" }
+source = "exe/build/browser/Release/vk_swiftshader_icd.json"
+destination = "Script/browser/exe/vk_swiftshader_icd.json"
+
+[artifacts."exe/vulkan-1.dll"]
+build = { group = "exe" }
+source = "exe/build/browser/Release/vulkan-1.dll"
+destination = "Script/browser/exe/vulkan-1.dll"
+
+[artifacts."exe/v8_context_snapshot.bin"]
+build = { group = "exe" }
+source = "exe/build/browser/Release/v8_context_snapshot.bin"
+destination = "Script/browser/exe/v8_context_snapshot.bin"
+
+[artifacts."exe/icudtl.dat"]
+build = { group = "exe" }
+source = "exe/build/browser/Release/icudtl.dat"
+destination = "Script/browser/exe/icudtl.dat"
+
+[artifacts."exe/resources.pak"]
+build = { group = "exe" }
+source = "exe/build/browser/Release/resources.pak"
+destination = "Script/browser/exe/resources.pak"
+
+[artifacts."exe/chrome_100_percent.pak"]
+build = { group = "exe" }
+source = "exe/build/browser/Release/chrome_100_percent.pak"
+destination = "Script/browser/exe/chrome_100_percent.pak"
+
+[artifacts."exe/chrome_200_percent.pak"]
+build = { group = "exe" }
+source = "exe/build/browser/Release/chrome_200_percent.pak"
+destination = "Script/browser/exe/chrome_200_percent.pak"
+
+[artifacts."exe/locales/en-US.pak"]
+build = { group = "exe" }
+source = "exe/build/browser/Release/locales/en-US.pak"
+destination = "Script/browser/exe/locales/en-US.pak"
+
+[artifacts."exe/locales/ja.pak"]
+build = { group = "exe" }
+source = "exe/build/browser/Release/locales/ja.pak"
+destination = "Script/browser/exe/locales/ja.pak"
+
+[release]
+# テストの後、インストール時のダイアログに注意事項とライセンスを出す
+prebuild = [
+    "cargo test",
+    'copy /b /y PACKAGE_NOTICE.md + LICENSE + THIRD_PARTY.md + THIRD_PARTY_CRATES.md release\package.txt >nul',
+]
+package_template = "release/package.txt"
+package_information = "{name} v{version} by HexBrowns"
+
+[catalog]
+id = "HexBrowns.AviUtl2Browser_H"
+license_path = { type = "MIT", path = "./LICENSE" }
+download_repo = { owner = "HexBrowns", repo = "AviUtl2Browser_H" }

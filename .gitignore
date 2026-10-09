@@ -1,1 +1,8 @@
-build
+# CEF のバイナリ配布物（巨大な第三者バイナリ。README の手順で取得する）
+exe/third_party/
+# CMake のビルド出力
+exe/build/
+dist/
+target/
+release/
+.aviutl2-cli/
