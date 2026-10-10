@@ -221,27 +221,60 @@ finish:
 	return 1;
 }
 
-static bool create_cache_dir(std::wstring& o) {
-	std::wstring s;
-	if (!get_module_file_name(NULL, s)) {
-		return false;
-	}
-	for (auto i = s.size() - 1; i > 0; --i) {
-		if ((s[i] == L'/' || s[i] == L'\\')) {
-			s.resize(i + 1);
-			s += L"cache";
-			break;
-		}
-	}
+// AviUtl2Browser_H: キャッシュの場所を exe ごとに分ける。
+// AviUtl2 を 2 つ起動すると exe も 2 つ動く。CEF 120 以降は root_cache_path ごとに 1 プロセスしか動けず
+// （cef_types.h の root_cache_path、cef_app.h の CefInitialize）、後から起動した側の CefInitialize が false を返して終わる。
+// 1 つ目は今までどおり exe\cache を使い（ログインやサイトの設定を引き継ぐ）、使用中なら exe\cache_2、cache_3 … を順に試す。
+// 使用中かは、各フォルダの AviUtl2Browser_H.lock を共有なしで開けるかで決める。開いたハンドルはプロセスの終わりまで持ち、
+// 落ちたときも OS が閉じる。番号を使い回すので、フォルダは同時に動かした数より増えない
+static const int kMaxCacheSlots = 16;
+
+static bool create_dir(const std::wstring& s) {
 	if (!CreateDirectoryW(s.c_str(), NULL)) {
 		const DWORD err = GetLastError();
 		if (err != ERROR_ALREADY_EXISTS) {
-			report(HRESULT_FROM_WIN32(GetLastError()), L"CreateDirectory failed");
+			report(HRESULT_FROM_WIN32(err), L"CreateDirectory failed");
 			return false;
 		}
 	}
-	o = s;
 	return true;
+}
+
+static bool create_cache_dir(std::wstring& o) {
+	std::wstring base;
+	if (!get_module_file_name(NULL, base)) {
+		return false;
+	}
+	for (auto i = base.size() - 1; i > 0; --i) {
+		if ((base[i] == L'/' || base[i] == L'\\')) {
+			base.resize(i + 1);
+			break;
+		}
+	}
+	for (int slot = 1; slot <= kMaxCacheSlots; ++slot) {
+		std::wstring s = base + L"cache";
+		if (slot > 1) {
+			s += L"_" + std::to_wstring(slot);
+		}
+		if (!create_dir(s)) {
+			return false;
+		}
+		const std::wstring lock_path = s + L"\\AviUtl2Browser_H.lock";
+		// 意図して閉じない（プロセスの終わりまで持つ）
+		const HANDLE lock = CreateFileW(lock_path.c_str(), GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+		if (lock == INVALID_HANDLE_VALUE) {
+			const DWORD err = GetLastError();
+			if (err == ERROR_SHARING_VIOLATION) {
+				continue; // 別の exe が使っている
+			}
+			report(HRESULT_FROM_WIN32(err), L"CreateFile(cache lock) failed");
+			return false;
+		}
+		o = s;
+		return true;
+	}
+	report(HRESULT_FROM_WIN32(ERROR_BUSY), L"all cache folders are in use");
+	return false;
 }
 
 int APIENTRY wWinMain(HINSTANCE hInstance,

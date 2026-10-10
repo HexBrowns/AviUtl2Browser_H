@@ -33,6 +33,8 @@ void Client::InitializeDevTools(CefRefPtr<CefBrowser> browser) {
 		ShowWindow(window, SW_SHOW);
 
 		browser_list_.push_back(browser);
+		// AviUtl2Browser_H: DevTools の窓も、終了のときに閉じきるのを待つ数に入れる
+		observer_->OnBrowserCreated();
 	};
 	c->before_close = [&](CefRefPtr<CefBrowser> browser) {
 		for (BrowserList::iterator bit = browser_list_.begin(); bit != browser_list_.end(); ++bit) {
@@ -41,6 +43,7 @@ void Client::InitializeDevTools(CefRefPtr<CefBrowser> browser) {
 				break;
 			}
 		}
+		observer_->OnBrowserClosed();
 	};
 	c->do_not_close = true;
 	CefWindowInfo wi = {};

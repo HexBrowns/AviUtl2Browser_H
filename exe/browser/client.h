@@ -9,6 +9,16 @@
 
 #include "assets.h"
 
+// AviUtl2Browser_H: 終了のとき、最後のブラウザが閉じてから CefQuitMessageLoop を呼ぶために数を数える（App が実装する）。
+// どちらも UI スレッドで呼ぶ（OnAfterCreated / OnBeforeClose から）
+class BrowserObserver {
+public:
+	virtual void OnBrowserCreated() = 0;
+	virtual void OnBrowserClosed() = 0;
+protected:
+	~BrowserObserver() {}
+};
+
 class PopupClient : public CefClient, public CefLifeSpanHandler {
 public:
 	std::function<void(CefRefPtr<CefBrowser> browser)> after_created;
@@ -45,7 +55,8 @@ class Client : public CefClient,
 	public CefRequestHandler,
 	public CefResourceRequestHandler {
 public:
-	explicit Client(CefRefPtr<Assets> assets);
+	// observer は Client より長く生きる（App。CEF が CefShutdown まで持っている）
+	Client(CefRefPtr<Assets> assets, BrowserObserver* observer);
 	~Client();
 
 	// CefClient methods:
@@ -143,6 +154,7 @@ private:
 	std::wstring userfile_, userfile_hash_;
 	CefRefPtr<PopupClient> devtools_;
 	CefRefPtr<Assets> assets_;
+	BrowserObserver* observer_;
 
 	bool received_result_ok_;
 	CefString received_result_param_;

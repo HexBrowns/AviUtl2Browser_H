@@ -11,7 +11,7 @@
 [project]
 id = "HexBrowns.AviUtl2Browser_H"
 name = "AviUtl2Browser_H"
-version = "0.1.0"
+version = "0.1.1"
 
 # exe は CMake で 1 回だけビルドする（下の同梱物がこのグループを参照する）
 [build_group]

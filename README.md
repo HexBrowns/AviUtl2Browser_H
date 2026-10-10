@@ -4,7 +4,7 @@
 oov 氏の [aviutl_browser](https://github.com/oov/aviutl_browser)（AviUtl1 用）を AviUtl2 へ移植したもので、
 **原作向けのコンテンツ（`.abc` / フォルダ）と、それを呼ぶスクリプトをそのまま使えます**（下の「原作向けのコンテンツを使う」の注意を除く）。
 
-- **バージョン:** 0.1.0（2026-10-09: 初版）
+- **バージョン:** 0.1.1（2026-10-10: AviUtl2 を 2 つ起動しても両方で描ける・表示用のプログラムが起動できないときに毎フレーム起動し直さない・終了を待ってから閉じる。0.1.0 は 2026-10-09 の初版）
 - **作者:** by HexBrowns（原作: oov）
 - **必要環境:** AviUtl2 **2.1.11** 以上、Windows 10 / 11（64bit）
 
@@ -20,12 +20,12 @@ oov 氏の [aviutl_browser](https://github.com/oov/aviutl_browser)（AviUtl1 用
 - **止まることがある**: コンテンツの JavaScript が完了を返さないと、その間（最大 30 秒）描画が止まります
 - **ネットワークに出られる**: コンテンツは任意のサイトへアクセスできます。毎フレーム外部へアクセスするコンテンツは相手に迷惑がかかるので、作らない・使わないでください
 - **ウイルス対策ソフトに止められることがある**: `Script\browser\exe\aviutl_browser.exe` を許可してください
-- 実行時に `Script\browser\exe\cache\` が作られ、使うほど大きくなります。AviUtl2 を終了していれば消してかまいません
+- 実行時に `Script\browser\exe\cache\` が作られ、使うほど大きくなります。AviUtl2 を 2 つ以上同時に使うと、2 つ目からは `cache_2\` `cache_3\` … を使います。AviUtl2 を終了していれば消してかまいません
 - **無保証**: 使用したこと及び使用しなかったことによるいかなる損害についても、作者は責任を負いません（原作の注意事項を引き継ぎます）
 
 ## 導入
 
-1. [Releases](https://github.com/HexBrowns/AviUtl2Browser_H/releases) から `HexBrowns.AviUtl2Browser_H-v0.1.0.au2pkg.zip`（約 177MB）をダウンロードし、AviUtl2 のプレビューへドラッグ&ドロップする
+1. [Releases](https://github.com/HexBrowns/AviUtl2Browser_H/releases) から `HexBrowns.AviUtl2Browser_H-v0.1.1.au2pkg.zip`（約 177MB）をダウンロードし、AviUtl2 のプレビューへドラッグ&ドロップする
    （手で置くなら、中の `Script` フォルダをデータフォルダ `C:\ProgramData\aviutl2` へコピーする）
 2. AviUtl2 を再起動する
 

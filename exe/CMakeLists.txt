@@ -34,7 +34,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CEF_ROOT}/cmake")
 set(USE_SANDBOX OFF CACHE BOOL "" FORCE)
 
 # 版（version.h に入る）。Cargo.toml の version と揃える
-set(AVIUTL2BROWSER_VERSION "0.1.0" CACHE STRING "")
+set(AVIUTL2BROWSER_VERSION "0.1.1" CACHE STRING "")
 
 find_package(CEF REQUIRED)
 

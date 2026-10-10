@@ -14,8 +14,9 @@
 
 #include "depremultipliedalpha_table.h"
 
-Client::Client(CefRefPtr<Assets> assets)
-	: buf_(nullptr),
+Client::Client(CefRefPtr<Assets> assets, BrowserObserver* observer)
+	: observer_(observer),
+	buf_(nullptr),
 	resized_(true),
 	loaded_(false),
 	rendered_(true),
@@ -76,6 +77,7 @@ bool Client::OnBeforePopup(CefRefPtr<CefBrowser> browser,
 void Client::OnAfterCreated(CefRefPtr<CefBrowser> browser) {
 	CEF_REQUIRE_UI_THREAD();
 	browser_list_.push_back(browser);
+	observer_->OnBrowserCreated();
 }
 
 bool Client::DoClose(CefRefPtr<CefBrowser> browser) {
@@ -91,6 +93,8 @@ void Client::OnBeforeClose(CefRefPtr<CefBrowser> browser) {
 			break;
 		}
 	}
+	// AviUtl2Browser_H: 最後の 1 つなら App が CefQuitMessageLoop を呼ぶ（終了中のときだけ）
+	observer_->OnBrowserClosed();
 }
 
 void Client::OnLoadingStateChange(CefRefPtr<CefBrowser> browser,
@@ -426,8 +430,19 @@ void Client::CloseAllBrowsers(bool force_close) {
 		return;
 	}
 
-	std::unique_lock<std::mutex> lk(mtx_);
-	for (auto it = browser_list_.cbegin(); it != browser_list_.cend(); ++it) {
+	// AviUtl2Browser_H: 画面外描画のブラウザは CloseBrowser の中で OnBeforeClose まで進むことがある
+	// （cef_browser.h の CloseBrowser、cef_life_span_handler.h の DoClose）。OnBeforeClose が browser_list_ から
+	// 消すので、写しを回す
+	BrowserList browsers;
+	{
+		std::unique_lock<std::mutex> lk(mtx_);
+		browsers = browser_list_;
+	}
+	// DevTools の窓は利用者が閉じられないように DoClose で止めている。終了のときは止める指定を外す
+	if (devtools_) {
+		devtools_->do_not_close = false;
+	}
+	for (auto it = browsers.cbegin(); it != browsers.cend(); ++it) {
 		(*it)->GetHost()->CloseBrowser(force_close);
 	}
 }

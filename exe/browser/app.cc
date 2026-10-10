@@ -9,7 +9,11 @@
 
 #include "callback.h"
 
-App::App() : initialized_(false) {
+// AviUtl2Browser_H: 終了のとき、ブラウザが閉じきるのをこれ以上は待たない。
+// .mod2 は標準入力を閉じてから 3 秒待って強制終了する（src/process.rs の SHUTDOWN_WAIT）ので、それより短くする
+static const int64_t kCloseBrowsersTimeoutMs = 2000;
+
+App::App() : initialized_(false), browser_count_(0), quitting_(false), quit_called_(false) {
 }
 
 void App::WaitInitialize() {
@@ -35,7 +39,7 @@ bool App::RenderAndCapture(
     if (it != clients_.cend()) {
         c = it->second;
     } else {
-        c = new Client(InitAssets(path, use_dir));
+        c = new Client(InitAssets(path, use_dir), this);
         clients_[key] = c;
         CefWindowInfo window_info;
         window_info.SetAsWindowless(nullptr);
@@ -63,19 +67,65 @@ bool App::RenderAndCapture(
     return c->RenderAndCapture(inbuf, outbuf, image, width, height);
 }
 
+// ipc_worker のスレッドから呼ぶ（標準入力が閉じられた＝ .mod2 が外れた・本体が終了した）
 void App::CloseAllBrowsers() {
 	std::lock_guard<std::mutex> lk(mtx_);
     for (auto &c : clients_) {
         c.second->CloseAllBrowsers(true);
     }
     clients_.clear();
-	CefPostTask(TID_UI, base::BindOnce(&CefQuitMessageLoop));
+	// AviUtl2Browser_H: 原作はここで CefQuitMessageLoop を積んでいた。CloseBrowser は非同期に閉じることがあり、
+	// ブラウザが閉じきる前にメッセージループを抜けて CefShutdown へ進んでいた。
+	// CEF の定石どおり、最後のブラウザの OnBeforeClose で抜ける（cef_life_span_handler.h の DoClose の説明）。
+	// 上の閉じる依頼は UI スレッドへ積まれているので、この後に積む QuitWhenAllClosed はそれらの後に走る
+	CefPostTask(TID_UI, base::BindOnce(&App::QuitWhenAllClosed, this));
+}
+
+void App::QuitWhenAllClosed() {
+	CEF_REQUIRE_UI_THREAD();
+	quitting_ = true;
+	if (browser_count_ <= 0) {
+		// ブラウザが 1 つも無い（一度も描いていない・すでに閉じきった）ならそのまま抜ける
+		QuitMessageLoopOnce();
+		return;
+	}
+	// OnBeforeClose が来ないまま待ち続けないよう、上限を付ける
+	CefPostDelayedTask(TID_UI, base::BindOnce(&App::QuitMessageLoopOnce, this), kCloseBrowsersTimeoutMs);
+}
+
+void App::QuitMessageLoopOnce() {
+	CEF_REQUIRE_UI_THREAD();
+	if (quit_called_) {
+		return;
+	}
+	quit_called_ = true;
+	CefQuitMessageLoop();
+}
+
+void App::OnBrowserCreated() {
+	CEF_REQUIRE_UI_THREAD();
+	++browser_count_;
+}
+
+void App::OnBrowserClosed() {
+	CEF_REQUIRE_UI_THREAD();
+	--browser_count_;
+	if (quitting_ && browser_count_ <= 0) {
+		QuitMessageLoopOnce();
+	}
 }
 
 void App::OnContextInitialized() {
 	CEF_REQUIRE_UI_THREAD();
     initialized_ = true;
     cv_.notify_all();
+}
+
+// AviUtl2Browser_H: 同じ root_cache_path の CEF が先に動いていると、後から起動した exe の引数がここへ回される。
+// 既定の動き（Chrome の窓を新しく開く）をさせない。キャッシュの場所は exe ごとに分けている（aviutl_browser_win.cc）ので、
+// ここへ来るのは古い版の exe が残っているときなどに限られる
+bool App::OnAlreadyRunningAppRelaunch(CefRefPtr<CefCommandLine> command_line, const CefString& current_directory) {
+	return true;
 }
 
 // AviUtl2Browser_H: 原作は OnWebKitInitialized で CefRegisterExtension（V8 拡張と `native function`）を使い、

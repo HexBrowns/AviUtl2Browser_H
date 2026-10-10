@@ -70,7 +70,7 @@ dependencies = [
 
 [[package]]
 name = "aviutl2-browser-h"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "aviutl2",

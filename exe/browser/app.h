@@ -19,7 +19,7 @@ struct client_key {
 	}
 };
 
-class App : public CefApp, public CefBrowserProcessHandler, public CefRenderProcessHandler {
+class App : public CefApp, public CefBrowserProcessHandler, public CefRenderProcessHandler, public BrowserObserver {
 public:
 	explicit App();
 
@@ -33,6 +33,11 @@ public:
 
 	// CefBrowserProcessHandler methods:
 	virtual void OnContextInitialized() override;
+	virtual bool OnAlreadyRunningAppRelaunch(CefRefPtr<CefCommandLine> command_line, const CefString& current_directory) override;
+
+	// BrowserObserver methods（UI スレッド）:
+	virtual void OnBrowserCreated() override;
+	virtual void OnBrowserClosed() override;
 
 	// CefRenderProcessHandler methods:
 	virtual void OnWebKitInitialized() override;
@@ -56,6 +61,13 @@ private:
 	bool initialized_;
 
 	std::map<client_key, CefRefPtr<Client>> clients_;
+
+	// AviUtl2Browser_H: 終了の段取り。どれも UI スレッドだけで触る
+	int browser_count_;   // 生きているブラウザ（DevTools の窓を含む）
+	bool quitting_;       // CloseAllBrowsers の後。最後のブラウザが閉じたら抜ける
+	bool quit_called_;    // CefQuitMessageLoop を 1 回だけ呼ぶ
+	void QuitWhenAllClosed();
+	void QuitMessageLoopOnce();
 
 	CefRefPtr<Assets> InitAssets(const std::wstring& path, const bool use_dir);
 
